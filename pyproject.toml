@@ -1,0 +1,13 @@
+[build-system]
+requires=["scikit-build","pybind11>=3.0.0","cmake>=3.18","setuptools>=42","wheel"]
+build-backend="setuptools.build_meta"
+[project]
+name="kinetics";version="0.1.0"
+description="MD engine: Velocity Verlet+SHAKE, Langevin thermostat"
+requires-python=">=3.10"
+[tool.setuptools]
+packages=["kinetics"]
+[tool.scikit-build]
+cmake.minimum-version="3.18"
+cmake.args=["-DCMAKE_CXX_FLAGS=/EHsc /std:c++17"]
+wheel.install-dir="kinetics"

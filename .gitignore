@@ -1,0 +1,7 @@
+# Build
+build_msvc/
+*.pyd
+*.egg-info/
+__pycache__/
+*.pyc
+
