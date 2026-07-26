@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Build
+build/
+build_msvc/
+CMakeFiles/
+cmake_install.cmake
+CMakeCache.txt
+*.so
+*.dll
+*.dylib
+
+# IDE
+.idea/
+.vscode/
+*.swp
