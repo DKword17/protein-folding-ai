@@ -1,0 +1,133 @@
+# ═══════════════════════════════════════════════════════════════════════
+#  CI configuration for protein-folding-ai
+# ═══════════════════════════════════════════════════════════════════════
+#
+#  Triggers:
+#    - push / pull_request on main and all dev/* branches
+#
+#  Jobs:
+#    1.  test  —  unit tests with pytest + coverage
+#    2.  lint  —  flake8 and mypy static analysis
+#
+#  Coverage target: > 85 % (gate on CI)
+#
+#  Author: Priya Sharma
+#          Quality Engineering, Indian Institute of Science, Bengaluru
+# ═══════════════════════════════════════════════════════════════════════
+
+name: CI — Tests & Coverage
+
+on:
+  push:
+    branches: [main, dev/*]
+  pull_request:
+    branches: [main]
+
+# ─── Environment ──────────────────────────────────────────────────────
+
+env:
+  PYTHON_VERSION: "3.11"
+
+
+# ─── Jobs ─────────────────────────────────────────────────────────────
+
+jobs:
+
+  # ──── Job 1: Unit tests + coverage ────────────────────────────────
+  test:
+    name: "Test (Python ${{ matrix.python-version }})"
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      # Step 1: Check out the repository.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up the requested Python version.
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      # Step 3: Install dependencies.
+      #   - pytest / coverage / pytest-cov for test execution and reporting.
+      #   - flake8 / mypy for linting.
+      #   - numpy (required by the engine).
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov coverage flake8 mypy
+          pip install numpy
+
+      # Step 4: Run unit tests with coverage measurement.
+      #   --cov=folding_engine  — the core engine (currently the only
+      #     source module available on this branch).
+      #   --cov-report=term-missing  — shows which lines are uncovered.
+      #   --cov-fail-under=85  — enforces the > 85 % coverage gate.
+      #
+      #   Note: --cov=sampling is intentionally omitted until Jean-Luc's
+      #   sampling module (dev/sampling-jeanluc) is merged into main.
+      #   When that happens, kindly add --cov=sampling here and the
+      #   corresponding stubs in test_sampling.py will activate.
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ \
+            --verbose \
+            --cov=folding_engine \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-fail-under=85
+
+      # Step 5: Upload coverage report as an artifact (for badge generation).
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report-${{ matrix.python-version }}
+          path: coverage.xml
+
+  # ──── Job 2: Lint (flake8 + mypy) ────────────────────────────────
+  lint:
+    name: "Lint (Python ${{ env.PYTHON_VERSION }})"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install lint tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 mypy numpy
+
+      # flake8: enforce PEP-8 with relaxed line length.
+      # Note: sampling/ and benchmark/ are excluded until Jean-Luc's
+      # and William's modules are merged into main.
+      - name: Run flake8
+        run: |
+          flake8 folding_engine.py tests/ \
+            --max-line-length=100 \
+            --ignore=E203,E266,W503 \
+            --count \
+            --statistics
+
+      # mypy: static type checking on the source modules.
+      # Note: sampling/ and benchmark/ are excluded until those
+      # branches land.
+      - name: Run mypy
+        run: |
+          mypy folding_engine.py \
+            --ignore-missing-imports \
+            --warn-unused-ignores \
+            --show-error-codes \
+            --strict-optional
